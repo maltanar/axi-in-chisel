@@ -5,64 +5,68 @@ import Chisel._
 import Literal._
 import Node._
 
-class AXILiteSlaveIF(addrWidthBits: Int, dataWidthBits: Int) extends Bundle
-{
-  // write address channel
-  val axi_awaddr  = UInt(INPUT, addrWidthBits)    // write address
-  val axi_awprot  = UInt(INPUT, 3)                // write address protect bits
-  val axi_awvalid = Bool(INPUT)                   // write address valid
-  val axi_awready = Bool(OUTPUT)                  // write address ready
-  // write data channel
-  val axi_wdata   = UInt(INPUT, dataWidthBits)    // write data
-  val axi_wstrb   = UInt(INPUT, dataWidthBits/8)  // write strobe (byte enables?)
-  val axi_wvalid  = Bool(INPUT)                   // write valid
-  val axi_wready  = Bool(OUTPUT)                  // write ready
-  // write response channel (for memory consistency)
-  val axi_bresp   = UInt(OUTPUT, 2)               // write response, 0 is OK
-  val axi_bvalid  = Bool(OUTPUT)                  // write response valid
-  val axi_bready  = Bool(INPUT)                   // write response ready
-  // read address channel
-  val axi_araddr  = UInt(INPUT, addrWidthBits)    // read address
-  val axi_arprot  = UInt(INPUT, 3)                // read address protect bits
-  val axi_arvalid = Bool(INPUT)                   // read address valid
-  val axi_arready = Bool(OUTPUT)                  // read address ready
-  // read data channel
-  val axi_rdata   = UInt(OUTPUT, dataWidthBits)   // read data
-  val axi_rresp   = UInt(OUTPUT, 2)               // read data status response, 0 is OK
-  val axi_rvalid  = Bool(OUTPUT)                  // read data valid
-  val axi_rready  = Bool(INPUT)                   // read data ready
+// Part I: Definitions for the actual data carried over AXI channels
+// in part II we will provide definitions for the actual AXI interfaces
+// by wrapping the part I types in Decoupled (ready/valid) bundles
+
+// TODO these are actually AXILite types -- rename appropriately
+// TODO add support for full AXI IFs with burst
+
+class AXIAddress(addrWidthBits: Int) extends Bundle {
+  val addr    = UInt(width = addrWidthBits)
+  val prot    = UInt(width = 3)
+  override def clone = { new AXIAddress(addrWidthBits).asInstanceOf[this.type] }
 }
 
-class AXILiteMasterIF(addrWidthBits: Int, dataWidthBits: Int) extends Bundle
-{
+class AXIWriteData(dataWidthBits: Int) extends Bundle {
+  val data    = UInt(width = dataWidthBits)
+  val strb    = UInt(width = dataWidthBits/8)
+  override def clone = { new AXIWriteData(dataWidthBits).asInstanceOf[this.type] }
+}
+
+class AXIReadData(dataWidthBits: Int) extends Bundle {
+  val data    = UInt(width = dataWidthBits)
+  val resp    = UInt(width = 2)
+  override def clone = { new AXIReadData(dataWidthBits).asInstanceOf[this.type] }
+}
+
+// Part II: Definitions for the actual AXI interfaces
+
+class AXILiteSlaveIF(addrWidthBits: Int, dataWidthBits: Int) extends Bundle {
+  // write address channel
+  val writeAddr   = Decoupled(new AXIAddress(addrWidthBits)).flip
+  // write data channel
+  val writeData   = Decoupled(new AXIWriteData(dataWidthBits)).flip
+  // write response channel (for memory consistency)
+  val writeResp   = Decoupled(UInt(width = 2))
+  
+  // read address channel
+  val readAddr    = Decoupled(new AXIAddress(addrWidthBits)).flip
+  // read data channel
+  val readData    = Decoupled(new AXIReadData(dataWidthBits))
+  
+  override def clone = { new AXILiteSlaveIF(addrWidthBits, dataWidthBits).asInstanceOf[this.type] }
+}
+
+class AXILiteMasterIF(addrWidthBits: Int, dataWidthBits: Int) extends Bundle {
   // metadata channel
   val axi_init_axi_txn  = Bool(INPUT)             // start transaction
   val axi_error         = Bool(OUTPUT)            // error indicator
   val axi_txn_done      = Bool(OUTPUT)            // transaction done
+  
   // write address channel
-  val axi_awaddr        = UInt(OUTPUT, addrWidthBits)     // write address
-  val axi_awprot        = UInt(OUTPUT, 3)                 // write address protect bits
-  val axi_awvalid       = Bool(OUTPUT)                    // write address valid
-  val axi_awready       = Bool(INPUT)                     // write address ready
+  val writeAddr   = Decoupled(new AXIAddress(addrWidthBits))
   // write data channel
-  val axi_wdata         = UInt(OUTPUT, dataWidthBits)    // write data
-  val axi_wstrb         = UInt(OUTPUT, dataWidthBits/8)  // write strobe (byte enables?)
-  val axi_wvalid        = Bool(OUTPUT)                   // write valid
-  val axi_wready        = Bool(INPUT)                    // write ready
-  // write response channel
-  val axi_bresp         = UInt(INPUT, 2)                // write response, 0 is OK
-  val axi_bvalid        = Bool(INPUT)                   // write response valid
-  val axi_bready        = Bool(OUTPUT)                  // write response ready
+  val writeData   = Decoupled(new AXIWriteData(dataWidthBits))
+  // write response channel (for memory consistency)
+  val writeResp   = Decoupled(UInt(width = 2)).flip
+  
   // read address channel
-  val axi_araddr        = UInt(OUTPUT, addrWidthBits)   // read address
-  val axi_arprot        = UInt(OUTPUT, 3)               // read address protect bits
-  val axi_arvalid       = Bool(OUTPUT)                  // read address valid
-  val axi_arready       = Bool(INPUT)                   // read address ready
+  val readAddr    = Decoupled(new AXIAddress(addrWidthBits))
   // read data channel
-  val axi_rdata         = UInt(INPUT, dataWidthBits)   // read data
-  val axi_rresp         = UInt(INPUT, 2)               // read data status response, 0 is OK
-  val axi_rvalid        = Bool(INPUT)                  // read data valid
-  val axi_rready        = Bool(OUTPUT)                 // read data ready
+  val readData    = Decoupled(new AXIReadData(dataWidthBits)).flip
+  
+  override def clone = { new AXILiteMasterIF(addrWidthBits, dataWidthBits).asInstanceOf[this.type] }
 }
 
 }
