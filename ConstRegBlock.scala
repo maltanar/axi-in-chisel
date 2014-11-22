@@ -11,6 +11,8 @@ import AXIDefs._
 class ConstRegBlock(addrBits: Int, dataBits: Int) extends Module {
   val io = new AXILiteSlaveIF(addrBits, dataBits)
   
+  io.renameSignals()
+  
   // as this is a read-only block, write response logic and such is constant
   // -- we do acknowledge writes and don't signal any errors, but writes have
   // simply no effect
