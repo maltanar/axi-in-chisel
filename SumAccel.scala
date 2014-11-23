@@ -17,7 +17,7 @@ class SumAccel() extends Module {
   io.slave.renameSignals()
   io.master.renameSignals()
   
-  val sInit :: sSendAW :: sSendW :: sFinished :: Nil = Enum(UInt(), 4)
+  val sInit :: sSendAW :: sSendW :: sWaitWResp :: Nil = Enum(UInt(), 4)
   val state = Reg(init = UInt(sInit))
   
   // drive default outputs
@@ -49,7 +49,7 @@ class SumAccel() extends Module {
   val regClkCount = Reg(init=UInt(0,32))
   val regTickCount = Reg(init=UInt(0,32))
   
-  when (regClkCount === UInt(10*100000000)) 
+  when (regClkCount === UInt(1*100000000)) 
   {
     regClkCount := UInt(0)
     regTickCount := regTickCount + UInt(1)
@@ -61,7 +61,8 @@ class SumAccel() extends Module {
   
   when (state === sInit)
   {
-    when (regTickCount >= UInt(1)) { state := sSendAW }
+    //when (regTickCount(0) === UInt(1) ) { state := sSendAW }
+    state := sSendAW
   }
   .elsewhen ( state === sSendAW )
   {
@@ -71,13 +72,14 @@ class SumAccel() extends Module {
   }
   .elsewhen (state === sSendW)
   {
-    io.master.writeData.bits.data := UInt("hfeedbead")
+    io.master.writeData.bits.data := UInt("hdeadbeef") + regTickCount
     io.master.writeData.valid := Bool(true)
-    when (io.master.writeData.ready) { state := sFinished}
+    when (io.master.writeData.ready) { state := sWaitWResp}
   }
-  .elsewhen (state === sFinished)
+  .elsewhen (state === sWaitWResp)
   {
-    // do nothing
+    io.master.writeResp.ready := Bool(true)
+    when (io.master.writeResp.valid) { state := sInit }
   }
 
   
@@ -93,3 +95,4 @@ class SumAccel() extends Module {
   // and summing the result
   
 }
+
