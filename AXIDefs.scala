@@ -73,12 +73,7 @@ class AXILiteSlaveIF(addrWidthBits: Int, dataWidthBits: Int) extends Bundle {
 
 
 
-class AXILiteMasterIF(addrWidthBits: Int, dataWidthBits: Int) extends Bundle {
-  // metadata channel
-  val axi_init_axi_txn  = Bool(INPUT)             // start transaction
-  val axi_error         = Bool(OUTPUT)            // error indicator
-  val axi_txn_done      = Bool(OUTPUT)            // transaction done
-  
+class AXILiteMasterIF(addrWidthBits: Int, dataWidthBits: Int) extends Bundle {  
   // write address channel
   val writeAddr   = Decoupled(new AXIAddress(addrWidthBits))
   // write data channel
@@ -90,6 +85,29 @@ class AXILiteMasterIF(addrWidthBits: Int, dataWidthBits: Int) extends Bundle {
   val readAddr    = Decoupled(new AXIAddress(addrWidthBits))
   // read data channel
   val readData    = Decoupled(new AXIReadData(dataWidthBits)).flip
+  
+  // rename signals to be compatible with those in the Xilinx template
+  def renameSignals() {
+    writeAddr.bits.addr.setName("M_AXI_AWADDR")
+    writeAddr.bits.prot.setName("M_AXI_AWPROT")
+    writeAddr.valid.setName("M_AXI_AWVALID")
+    writeAddr.ready.setName("M_AXI_AWREADY")
+    writeData.bits.data.setName("M_AXI_WDATA")
+    writeData.bits.strb.setName("M_AXI_WSTRB")
+    writeData.valid.setName("M_AXI_WVALID")
+    writeData.ready.setName("M_AXI_WREADY")
+    writeResp.bits.setName("M_AXI_BRESP")
+    writeResp.valid.setName("M_AXI_BVALID")
+    writeResp.ready.setName("M_AXI_BREADY")
+    readAddr.bits.addr.setName("M_AXI_ARADDR")
+    readAddr.bits.prot.setName("M_AXI_ARPROT")
+    readAddr.valid.setName("M_AXI_ARVALID")
+    readAddr.ready.setName("M_AXI_ARREADY")
+    readData.bits.data.setName("M_AXI_RDATA")
+    readData.bits.resp.setName("M_AXI_RRESP")
+    readData.valid.setName("M_AXI_RVALID")
+    readData.ready.setName("M_AXI_RREADY")
+  }
   
   override def clone = { new AXILiteMasterIF(addrWidthBits, dataWidthBits).asInstanceOf[this.type] }
 }
