@@ -6,7 +6,9 @@ import Node._
 import AXIDefs._
 
 // a simple read-only register block AXI lite slave example
-// the returned data value from a read is the internal register address
+// returns a constant value for all addresses
+// TODO reading causes processor to freeze - what can be wrong?
+
 
 class ConstRegBlock(addrBits: Int, dataBits: Int) extends Module {
   val io = new AXILiteSlaveIF(addrBits, dataBits)
@@ -21,12 +23,13 @@ class ConstRegBlock(addrBits: Int, dataBits: Int) extends Module {
   io.writeResp.bits   := UInt(0)
   io.writeResp.valid  := Bool(true)
   
-  // response follows request after 1 cycle, both for address and data.
-  io.readAddr.ready := Reg(next = io.readAddr.valid)
-  io.readData.valid := Reg(next = io.readData.ready)
+  io.readAddr.ready := Bool(true)
   
   // loopback request address as data
-  io.readData.bits.data   := Reg(next = io.readAddr.bits.addr)
+  //io.readData.bits.data   := Reg(next = io.readAddr.bits.addr)
+  io.readData.bits.data   := UInt(0xdeadbeef)
+  io.readData.valid       := Bool(true)
+  
   // read response always returns OK in our case  
   io.readData.bits.resp   := UInt(0)
 }
