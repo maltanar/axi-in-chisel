@@ -12,7 +12,7 @@ class SumAccel() extends Module {
   val io = new Bundle {
     val slave = new AXILiteSlaveIF(8, 32)
     val master = new AXILiteMasterIF(32, 32)
-    val pulse = Bits(OUTPUT, 1)
+    val pulse = Bits(OUTPUT, 8)
   }
   
   io.slave.renameSignals()
@@ -21,16 +21,48 @@ class SumAccel() extends Module {
   val sInit :: sSendAW :: sSendW :: sWaitWResp :: Nil = Enum(UInt(), 4)
   val state = Reg(init = UInt(sInit))
   
+  // clock counter register
+  val regClkCount = Reg(init=UInt(0,32))
+  val regTickCount = Reg(init=UInt(0,32))
+  
+  when (regClkCount > UInt(100000000)) 
+  {
+    regClkCount := UInt(0)
+    regTickCount := regTickCount + UInt(1)
+  }
+  .otherwise 
+  {
+    regClkCount := regClkCount + UInt(1)
+  }
+  
+
+  val readValidReg = Reg(init=Bool(false))
+  
+  when (!readValidReg)
+  {
+    readValidReg := io.slave.readAddr.valid
+  }
+  .otherwise
+  {
+    readValidReg := ~io.slave.readData.ready
+  }
+  
+  
+  io.slave.readAddr.ready := Bool(true)
+  io.slave.readData.valid := readValidReg
+
+  io.slave.readData.bits.resp   := UInt(0)    // always OK
+  io.slave.readData.bits.data   := regTickCount
+  
+  
+  
+  
   // drive default outputs
   // slave IF
   io.slave.writeAddr.ready  := Bool(false)
   io.slave.writeData.ready  := Bool(false)
   io.slave.writeResp.valid  := Bool(false)
   io.slave.writeResp.bits   := UInt(0)
-  io.slave.readAddr.ready   := Bool(false)
-  io.slave.readData.valid   := Bool(false)
-  io.slave.readData.bits.data := UInt(0)
-  io.slave.readData.bits.resp := UInt(0)
   // master IF
   // read addr & data
   io.master.readAddr.bits.addr  := UInt(0)
@@ -46,23 +78,8 @@ class SumAccel() extends Module {
   io.master.writeData.bits.strb := UInt("b1111")
   io.master.writeResp.ready     := Bool(false)
   
-  // clock counter register
-  val regClkCount = Reg(init=UInt(0,32))
-  val regTickCount = Reg(init=UInt(0,32))
-  val regPulse = Reg(init=Bits(0))
   
-  io.pulse := regPulse
-  
-  when (regClkCount === UInt(1*100000000)) 
-  {
-    regClkCount := UInt(0)
-    regTickCount := regTickCount + UInt(1)
-    regPulse := ~regPulse
-  }
-  .otherwise
-  {
-    regClkCount := regClkCount + UInt(1)
-  }
+  io.pulse := Cat(regTickCount(1,0), Cat(regClkCount(1,0), Bits("b1111")))
   
   when (state === sInit)
   {
