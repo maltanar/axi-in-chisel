@@ -18,51 +18,32 @@ class SumAccel() extends Module {
   io.slave.renameSignals()
   io.master.renameSignals()
   
-  val sInit :: sSendAW :: sSendW :: sWaitWResp :: Nil = Enum(UInt(), 4)
-  val state = Reg(init = UInt(sInit))
+  val sIdle :: sActive :: sWaitComplete :: Nil = Enum(UInt(), 3)
+  val state = Reg(init = UInt(sIdle))
   
-  // clock counter register
-  val regClkCount = Reg(init=UInt(0,32))
-  val regTickCount = Reg(init=UInt(0,32))
+  /*
+  val regBank = Vec.fill(8) { Reg(init=UInt(0,32) }
+  val regStatus = regBank(0)
+  val regCmd = regBank(1)
+  val regStartAddr = regBank(2)
+  val regCount = regBank(3)
+  val regStride = regBank(4)
+  val regSumResult = regBank(5)
+  */
   
-  when (regClkCount > UInt(100000000)) 
-  {
-    regClkCount := UInt(0)
-    regTickCount := regTickCount + UInt(1)
-  }
-  .otherwise 
-  {
-    regClkCount := regClkCount + UInt(1)
-  }
-  
-
-  val readValidReg = Reg(init=Bool(false))
-  
-  when (!readValidReg)
-  {
-    readValidReg := io.slave.readAddr.valid
-  }
-  .otherwise
-  {
-    readValidReg := ~io.slave.readData.ready
-  }
-  
-  
-  io.slave.readAddr.ready := Bool(true)
-  io.slave.readData.valid := readValidReg
-
-  io.slave.readData.bits.resp   := UInt(0)    // always OK
-  io.slave.readData.bits.data   := regTickCount
+  val regSumResult = Reg(init=UInt(0,32))
+  val regCurrentAddr = Reg(init=UInt(0,32))
+  val regDataCount = Reg(init=UInt(0,32))
   
   
   
-  
-  // drive default outputs
+  // --------------------- <default outputs> ---------------------------------------
   // slave IF
-  io.slave.writeAddr.ready  := Bool(false)
-  io.slave.writeData.ready  := Bool(false)
-  io.slave.writeResp.valid  := Bool(false)
+  io.slave.writeAddr.ready  := Bool(true)
+  io.slave.writeData.ready  := Bool(true)
+  io.slave.writeResp.valid  := Reg(init=Bool(false), next=io.slave.writeAddr.valid)
   io.slave.writeResp.bits   := UInt(0)
+  
   // master IF
   // read addr & data
   io.master.readAddr.bits.addr  := UInt(0)
@@ -78,43 +59,64 @@ class SumAccel() extends Module {
   io.master.writeData.bits.strb := UInt("b1111")
   io.master.writeResp.ready     := Bool(false)
   
+  // status indicator
+  io.pulse := Cat(regDataCount(5,0), UIntToOH(state))
+  // --------------------- </default outputs> --------------------------------------
   
-  io.pulse := Cat(regTickCount(1,0), Cat(regClkCount(1,0), Bits("b1111")))
   
-  when (state === sInit)
+  
+  
+  
+  when ( state === sIdle )
   {
-    //when (regTickCount(0) === UInt(1) ) { state := sSendAW }
-    state := sSendAW
+    // TODO read start command properly from register bank
+    val startCommand = io.slave.writeData.valid && (io.slave.writeData.bits.data === UInt("hf00dfeed"))
+    // TODO make start address parametrizable
+    regCurrentAddr := UInt("h10000000")
+    regSumResult := UInt(0)
+    regDataCount := UInt(0)
+    
+    when ( startCommand ) { state := sActive }
   }
-  .elsewhen ( state === sSendAW )
+  .elsewhen ( state === sActive )
   {
-    io.master.writeAddr.bits.addr := UInt("h10000000")
-    io.master.writeAddr.valid := Bool(true)
-    when (io.master.writeAddr.ready) { state := sSendW}
+    io.master.readAddr.valid := Bool(true)          // address valid
+    io.master.readAddr.bits.addr := regCurrentAddr  // address to read  
+    io.master.readData.ready := Bool(true)          // ready to accept read data
+    
+    // increment sum when read data is available
+    when ( io.master.readData.valid ) 
+    { 
+      regSumResult := regSumResult + io.master.readData.bits.data 
+      regDataCount := regDataCount + UInt(1)
+      regCurrentAddr := regCurrentAddr + UInt(4)
+      state := Mux(regDataCount === UInt(3), sWaitComplete, sActive)
+    }
+    
+    //when ( regCurrentAddr === UInt("h10000010") ) { state := sWaitComplete }
   }
-  .elsewhen (state === sSendW)
+  .elsewhen ( state === sWaitComplete )
   {
-    io.master.writeData.bits.data := UInt("hdeadbeef") + regTickCount
-    io.master.writeData.valid := Bool(true)
-    when (io.master.writeData.ready) { state := sWaitWResp}
+    val startCommand = io.slave.writeData.valid && (io.slave.writeData.bits.data === UInt("hf00dfeed"))
+    when ( startCommand ) { state := sIdle }
   }
-  .elsewhen (state === sWaitWResp)
+  
+  // result reading (slave IF read channel)
+  val readValidReg = Reg(init=Bool(false))
+  
+  when (!readValidReg)
   {
-    io.master.writeResp.ready := Bool(true)
-    when (io.master.writeResp.valid) { state := sInit }
+    readValidReg := io.slave.readAddr.valid
   }
+  .otherwise
+  {
+    readValidReg := ~io.slave.readData.ready
+  }
+  
+  io.slave.readAddr.ready := Bool(true)
+  io.slave.readData.valid := readValidReg
 
-  
-  // TODO implement slave interface with status and control:
-  // - status register (idle / busy)
-  // - result register (sum)
-  // - cycle count register (for performance measurement)
-  // - start address
-  // - element count
-  // - control register (start/stop)
-  
-  // TODO implement master interface for requesting data
-  // and summing the result
-  
+  io.slave.readData.bits.resp   := UInt(0)    // always OK
+  io.slave.readData.bits.data   := regSumResult
 }
 
