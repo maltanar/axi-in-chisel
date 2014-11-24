@@ -18,7 +18,7 @@ class SumAccel() extends Module {
   io.slave.renameSignals()
   io.master.renameSignals()
   
-  val sIdle :: sActive :: sWaitComplete :: Nil = Enum(UInt(), 3)
+  val sIdle :: sActive :: sWaitComplete :: sFinished :: Nil = Enum(UInt(), 4)
   val state = Reg(init = UInt(sIdle))
   
   /*
@@ -63,10 +63,6 @@ class SumAccel() extends Module {
   io.pulse := Cat(regDataCount(5,0), UIntToOH(state))
   // --------------------- </default outputs> --------------------------------------
   
-  
-  
-  
-  
   when ( state === sIdle )
   {
     // TODO read start command properly from register bank
@@ -80,8 +76,15 @@ class SumAccel() extends Module {
   }
   .elsewhen ( state === sActive )
   {
+    // send out read request
     io.master.readAddr.valid := Bool(true)          // address valid
-    io.master.readAddr.bits.addr := regCurrentAddr  // address to read  
+    io.master.readAddr.bits.addr := regCurrentAddr  // address to read
+    
+    when ( io.master.readAddr.ready ) { state := sWaitComplete}
+  }
+  .elsewhen ( state === sWaitComplete )
+  {
+    // wait for read response
     io.master.readData.ready := Bool(true)          // ready to accept read data
     
     // increment sum when read data is available
@@ -90,12 +93,10 @@ class SumAccel() extends Module {
       regSumResult := regSumResult + io.master.readData.bits.data 
       regDataCount := regDataCount + UInt(1)
       regCurrentAddr := regCurrentAddr + UInt(4)
-      state := Mux(regDataCount === UInt(3), sWaitComplete, sActive)
-    }
-    
-    //when ( regCurrentAddr === UInt("h10000010") ) { state := sWaitComplete }
+      state := Mux(regDataCount === UInt(3), sFinished, sActive)
+    }    
   }
-  .elsewhen ( state === sWaitComplete )
+  .elsewhen (state === sFinished)
   {
     val startCommand = io.slave.writeData.valid && (io.slave.writeData.bits.data === UInt("hf00dfeed"))
     when ( startCommand ) { state := sIdle }
