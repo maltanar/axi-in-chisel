@@ -12,6 +12,7 @@ class SumAccel() extends Module {
   val io = new Bundle {
     val slave = new AXILiteSlaveIF(8, 32)
     val master = new AXILiteMasterIF(32, 32)
+    val pulse = Bits(OUTPUT, 1)
   }
   
   io.slave.renameSignals()
@@ -48,11 +49,15 @@ class SumAccel() extends Module {
   // clock counter register
   val regClkCount = Reg(init=UInt(0,32))
   val regTickCount = Reg(init=UInt(0,32))
+  val regPulse = Reg(init=Bits(0))
+  
+  io.pulse := regPulse
   
   when (regClkCount === UInt(1*100000000)) 
   {
     regClkCount := UInt(0)
     regTickCount := regTickCount + UInt(1)
+    regPulse := ~regPulse
   }
   .otherwise
   {
