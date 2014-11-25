@@ -63,6 +63,13 @@ class SumAccel() extends Module {
   io.pulse := Cat(regDataCount(5,0), UIntToOH(state))
   // --------------------- </default outputs> --------------------------------------
   
+  val regReadStart = Reg(init=UInt(0,32))
+  val regReadEnd = Reg(init=UInt(0,32))
+  val clkCount = Reg(init=UInt(0,32))
+  clkCount := clkCount + UInt(1)
+  
+  
+  
   when ( state === sIdle )
   {
     // TODO read start command properly from register bank
@@ -72,7 +79,11 @@ class SumAccel() extends Module {
     regSumResult := UInt(0)
     regDataCount := UInt(0)
     
-    when ( startCommand ) { state := sActive }
+    when ( startCommand ) 
+    { 
+      state := sActive 
+      regReadStart := clkCount
+    }
   }
   .elsewhen ( state === sActive )
   {
@@ -93,7 +104,16 @@ class SumAccel() extends Module {
       regSumResult := regSumResult + io.master.readData.bits.data 
       regDataCount := regDataCount + UInt(1)
       regCurrentAddr := regCurrentAddr + UInt(4)
-      state := Mux(regDataCount === UInt(3), sFinished, sActive)
+      
+      when(regDataCount === UInt(1000))
+      {
+        state := sFinished
+        regReadEnd := clkCount
+      }
+      .otherwise
+      {
+        state := sActive
+      }
     }    
   }
   .elsewhen (state === sFinished)
@@ -118,6 +138,7 @@ class SumAccel() extends Module {
   io.slave.readData.valid := readValidReg
 
   io.slave.readData.bits.resp   := UInt(0)    // always OK
-  io.slave.readData.bits.data   := regSumResult
+  //io.slave.readData.bits.data   := regSumResult
+  io.slave.readData.bits.data   := regReadEnd-regReadStart
 }
 
