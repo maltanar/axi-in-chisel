@@ -9,41 +9,40 @@ import Node._
 // in part II we will provide definitions for the actual AXI interfaces
 // by wrapping the part I types in Decoupled (ready/valid) bundles
 
-// TODO these are actually AXILite types -- rename appropriately
 // TODO add support for full AXI IFs with burst
 
-class AXIAddress(addrWidthBits: Int) extends Bundle {
+class AXILiteAddress(addrWidthBits: Int) extends Bundle {
   val addr    = UInt(width = addrWidthBits)
   val prot    = UInt(width = 3)
-  override def clone = { new AXIAddress(addrWidthBits).asInstanceOf[this.type] }
+  override def clone = { new AXILiteAddress(addrWidthBits).asInstanceOf[this.type] }
 }
 
-class AXIWriteData(dataWidthBits: Int) extends Bundle {
+class AXILiteWriteData(dataWidthBits: Int) extends Bundle {
   val data    = UInt(width = dataWidthBits)
   val strb    = UInt(width = dataWidthBits/8)
-  override def clone = { new AXIWriteData(dataWidthBits).asInstanceOf[this.type] }
+  override def clone = { new AXILiteWriteData(dataWidthBits).asInstanceOf[this.type] }
 }
 
-class AXIReadData(dataWidthBits: Int) extends Bundle {
+class AXILiteReadData(dataWidthBits: Int) extends Bundle {
   val data    = UInt(width = dataWidthBits)
   val resp    = UInt(width = 2)
-  override def clone = { new AXIReadData(dataWidthBits).asInstanceOf[this.type] }
+  override def clone = { new AXILiteReadData(dataWidthBits).asInstanceOf[this.type] }
 }
 
 // Part II: Definitions for the actual AXI interfaces
 
 class AXILiteSlaveIF(addrWidthBits: Int, dataWidthBits: Int) extends Bundle {
   // write address channel
-  val writeAddr   = Decoupled(new AXIAddress(addrWidthBits)).flip
+  val writeAddr   = Decoupled(new AXILiteAddress(addrWidthBits)).flip
   // write data channel
-  val writeData   = Decoupled(new AXIWriteData(dataWidthBits)).flip
+  val writeData   = Decoupled(new AXILiteWriteData(dataWidthBits)).flip
   // write response channel (for memory consistency)
   val writeResp   = Decoupled(UInt(width = 2))
   
   // read address channel
-  val readAddr    = Decoupled(new AXIAddress(addrWidthBits)).flip
+  val readAddr    = Decoupled(new AXILiteAddress(addrWidthBits)).flip
   // read data channel
-  val readData    = Decoupled(new AXIReadData(dataWidthBits))
+  val readData    = Decoupled(new AXILiteReadData(dataWidthBits))
   
   // rename signals to be compatible with those in the Xilinx template
   def renameSignals() {
@@ -75,16 +74,16 @@ class AXILiteSlaveIF(addrWidthBits: Int, dataWidthBits: Int) extends Bundle {
 
 class AXILiteMasterIF(addrWidthBits: Int, dataWidthBits: Int) extends Bundle {  
   // write address channel
-  val writeAddr   = Decoupled(new AXIAddress(addrWidthBits))
+  val writeAddr   = Decoupled(new AXILiteAddress(addrWidthBits))
   // write data channel
-  val writeData   = Decoupled(new AXIWriteData(dataWidthBits))
+  val writeData   = Decoupled(new AXILiteWriteData(dataWidthBits))
   // write response channel (for memory consistency)
   val writeResp   = Decoupled(UInt(width = 2)).flip
   
   // read address channel
-  val readAddr    = Decoupled(new AXIAddress(addrWidthBits))
+  val readAddr    = Decoupled(new AXILiteAddress(addrWidthBits))
   // read data channel
-  val readData    = Decoupled(new AXIReadData(dataWidthBits)).flip
+  val readData    = Decoupled(new AXILiteReadData(dataWidthBits)).flip
   
   // rename signals to be compatible with those in the Xilinx template
   def renameSignals() {
