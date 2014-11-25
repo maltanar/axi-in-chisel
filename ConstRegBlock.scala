@@ -3,7 +3,7 @@ package AXIChisel
 import Chisel._
 import Literal._
 import Node._
-import AXIDefs._
+import AXILiteDefs._
 
 // a simple read-only register block AXI lite slave example
 // returns a constant value for all addresses

@@ -3,7 +3,7 @@ package AXIChisel
 import Chisel._
 import Literal._
 import Node._
-import AXIDefs._
+import AXILiteDefs._
 
 // a summation accelerator using AXI Lite Slave for control/status and AXI Master for reads
 // hardcoded to use 32-bit data width
