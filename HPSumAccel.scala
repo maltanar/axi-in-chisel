@@ -24,7 +24,7 @@ class HPSumAccel() extends Module {
   val dataBits = 64
   val addrBits = 32
   val wordSize = 32
-  val burstBeatCount = 16
+  val burstBeatCount = 256
   val wordsPerBeat = dataBits/wordSize
   
   // states for the control FSM
@@ -40,6 +40,11 @@ class HPSumAccel() extends Module {
   // configuration registers for read operation
   val regStartAddress = Reg(init = UInt(0, 32))
   val regTotalWords = Reg(init = UInt(0, 32))
+  
+  // benchmarking registers
+  val regTime = Reg(init = UInt(0,32))
+  val clkCount = Reg(init = UInt(0,32))
+  clkCount := clkCount + UInt(1)
   
   // status registers for read operation
   val regWordCount = Reg(init = UInt(0, 32))
@@ -90,7 +95,9 @@ class HPSumAccel() extends Module {
   io.slave.readAddr.ready := Bool(true)
   io.slave.readData.valid := readValidReg
   io.slave.readData.bits.resp   := UInt(0)
-  io.slave.readData.bits.data   := regSumResult
+  val readAddrReg = Reg(init=UInt(0,8))
+  when (io.slave.readAddr.valid) { readAddrReg := io.slave.readAddr.bits.addr }
+  io.slave.readData.bits.data   := Mux(readAddrReg(2), regTime, regSumResult) 
   // ****************** </result reading (slave IF read channel)> ***********************
   
   
@@ -122,6 +129,7 @@ class HPSumAccel() extends Module {
     // read and register read count
     when ( io.slave.writeData.valid )
     {
+      regTime := clkCount
       regTotalWords := io.slave.writeData.bits.data
       state := sActive
     }
@@ -153,7 +161,11 @@ class HPSumAccel() extends Module {
         // increment start address by 1 burst 
         regStartAddress := regStartAddress + UInt((addrBits/8)*wordsPerBeat*burstBeatCount)
         // next state: either issue new request or go to finish
-        when ( regWordCount === regTotalWords - UInt(wordsPerBeat) ) { state := sFinished}
+        when ( regWordCount === regTotalWords - UInt(wordsPerBeat) ) 
+        { 
+          state := sFinished
+          regTime := clkCount - regTime
+        }
         .otherwise { state := sActive}
       }
     }
