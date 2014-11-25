@@ -17,7 +17,7 @@ class AXIAddress(addrWidthBits: Int, idBits: Int) extends Bundle {
   val len     = UInt(width = 8)
   val prot    = UInt(width = 3)
   val burst   = UInt(width = 2)
-  val lock    = UInt(width = 2)
+  val lock    = Bool()
   val cache   = UInt(width = 4)
   val qos     = UInt(width = 4)
   val id      = UInt(width = idBits)
@@ -34,6 +34,7 @@ class AXIWriteData(dataWidthBits: Int) extends Bundle {
 class AXIWriteResponse(idBits: Int) extends Bundle {
   val id      = UInt(width = idBits)
   val resp    = UInt(width = 2)
+  override def clone = { new AXIWriteResponse(idBits).asInstanceOf[this.type] }
 }
 
 class AXIReadData(dataWidthBits: Int, idBits: Int) extends Bundle {

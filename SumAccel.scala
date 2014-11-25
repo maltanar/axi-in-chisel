@@ -5,8 +5,10 @@ import Literal._
 import Node._
 import AXILiteDefs._
 
-// a summation accelerator using AXI Lite Slave for control/status and AXI Master for reads
+// a summation accelerator using AXI Lite Slave for control/status and AXI Lite master for reads
 // hardcoded to use 32-bit data width
+// waits until each read is completed before issuing new read, which results in
+// pretty horrible performance
 
 class SumAccel() extends Module {
   val io = new Bundle {
