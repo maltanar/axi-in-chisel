@@ -12,15 +12,25 @@ import Node._
 // AXI channel data definitions
 
 class AXIAddress(addrWidthBits: Int, idBits: Int) extends Bundle {
+  // address for the transaction, should be burst aligned if bursts are used
   val addr    = UInt(width = addrWidthBits)
-  val size    = UInt(width = 3)
+  // size of data beat in bytes
+  // set to UInt(log2Up((dataBits/8)-1)) for full-width bursts
+  val size    = UInt(width = 3) 
+  // number of data beats -1 in burst: max 255 for incrementing, 15 for wrapping
   val len     = UInt(width = 8)
-  val prot    = UInt(width = 3)
+  // burst mode: 0 for fixed, 1 for incrementing, 2 for wrapping
   val burst   = UInt(width = 2)
-  val lock    = Bool()
-  val cache   = UInt(width = 4)
-  val qos     = UInt(width = 4)
+  // transaction ID for multiple outstanding requests
   val id      = UInt(width = idBits)
+  // set to 1 for exclusive access
+  val lock    = Bool()
+  // cachability, set to 0010 or 0011
+  val cache   = UInt(width = 4)
+  // generally ignored, set to to all zeroes
+  val prot    = UInt(width = 3)
+  // not implemented, set to zeroes
+  val qos     = UInt(width = 4)
   override def clone = { new AXIAddress(addrWidthBits, idBits).asInstanceOf[this.type] }
 }
 
