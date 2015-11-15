@@ -4,6 +4,8 @@ by Yaman Umuroglu (yamanu@idi.ntnu.no)
 
 A collection of AXI4 interface definitions and simple peripherals in Chisel.
 
+You may also want to check out <https://github.com/maltanar/fpga-tidbits>, which has more Chisel accelerators talking to AXI4 (but through a simple "intermediate representation" for cross-platform compatibility).
+
 I started working on this because I wanted more hands-on experience with Chisel and a faster way of making my hardware prototypes work with AXI interfaces found on e.g Xilinx FPGA/programmable SoCs. There are 50+ signals/ports on a full-blown AXI interface, which can be daunting. However, these can be organized into address and data channels based on the decoupled (ready/valid) abstraction, which fits nicely with Chisel's Decoupled-style interfaces and custom types.
 
 It is worth mentioning that the code here targets the Verilog backend and hardware synthesis only, since there are no testbenches. The generated Verilog should be straightforward to use with the Xilinx IP packager. The peripherals aren't extensively tested, but they performed as expected on a ZedBoard (pushed through Vivado for synthesis).
